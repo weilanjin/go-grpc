@@ -1,0 +1,29 @@
+syntax = "proto3";
+option go_package = "./simple";
+
+import "../common/base.proto";
+import "google/protobuf/empty.proto";
+
+message HelloRequest {
+  string greeting = 1;
+}
+
+message HelloResponse {
+  string reply = 1;
+}
+
+service Greeter {
+
+  rpc Health(google.protobuf.Empty) returns (Response){}
+
+  // 普通模式
+  rpc SayHello(HelloRequest) returns (HelloResponse){}
+
+  // 三种流模式
+  // 服务端流模式 (服务端推流)
+  rpc LotsOfReplies(HelloRequest) returns (stream HelloResponse){}
+  // 客户端流模式 (客户端推流)
+  rpc LotsOfGreetings(stream HelloRequest) returns (HelloResponse){}
+  // 双向流模式
+  rpc BidiHello(stream HelloRequest) returns (stream HelloResponse){}
+}
