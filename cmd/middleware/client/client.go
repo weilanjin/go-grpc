@@ -7,11 +7,26 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"time"
 )
+
+type Credential struct{}
+
+func (c *Credential) GetRequestMetadata(ctx context.Context, url ...string) (map[string]string, error) {
+	return map[string]string{
+		"token": "xxxxx",
+	}, nil
+}
+
+func (c *Credential) RequireTransportSecurity() bool {
+	return false
+}
 
 // grpc.UnaryClientInterceptor
 // 1. set token
 // 2. logging
+// use grpc.WithUnaryInterceptor(interceptorClient)
 func interceptorClient(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	md := metadata.New(map[string]string{
 		"token": "xxxxxx",
@@ -25,7 +40,7 @@ func interceptorClient(ctx context.Context, method string, req, reply any, cc *g
 func main() {
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(interceptorClient),
+		grpc.WithPerRPCCredentials(new(Credential)),
 	}
 	conn, err := grpc.Dial("localhost:10007", opts...)
 	if err != nil {
@@ -34,9 +49,17 @@ func main() {
 	defer conn.Close()
 
 	client := middleware.NewGreeterClient(conn)
-	rsp, err := client.SayHello(context.Background(), &middleware.HelloRequest{Greeting: "lanjin.wei"})
+
+	// err DeadlineExceeded
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*3) // 设置请求超时时间
+	rsp, err := client.SayHello(ctx, &middleware.HelloRequest{Greeting: "lanjin.wei"})
 	if err != nil {
-		panic(err)
+		st, ok := status.FromError(err)
+		if !ok {
+			panic(err)
+		}
+		slog.Info("[client]", "code", st.Code(), "message", st.Message())
+		return
 	}
 	slog.Info("[client]", "reply", rsp.Reply)
 }

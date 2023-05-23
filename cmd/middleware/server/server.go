@@ -18,6 +18,8 @@ type Server struct {
 }
 
 func (s *Server) SayHello(ctx context.Context, request *middleware.HelloRequest) (*middleware.HelloResponse, error) {
+	// timeout test
+	time.Sleep(5 * time.Second)
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.FailedPrecondition, "get metadata error")
